@@ -3,30 +3,24 @@ const { chromium } = require('playwright');
 const USERNAME = 'Andrian.Kurnia@steradian.co.id';
 const PASSWORD = '087739993050';
 const URL = 'https://quadrang.steradian.co.id/login/';
-function getRandomDelayMs() {
-  const now = new Date();
-
-  // WIB = UTC+7, kita pakai waktu lokal komputer lalu ubah ke WIB:
-  // Asumsi server sudah di timezone WIB atau sesuaikan dengan offset
-  const targetHour = 7;
-  const minMinute = 15;
-  const maxMinute = 29;
-
-  const start = new Date(now);
-  start.setHours(targetHour, minMinute, 0, 0);
-
-  const end = new Date(now);
-  end.setHours(targetHour, maxMinute, 59, 999);
-
-  // Random milisecond antara start dan end
-  const randomTime =
-    start.getTime() +
-    Math.floor(Math.random() * (end.getTime() - start.getTime()));
-
-  return randomTime - now.getTime(); // delay dari sekarang sampai waktu random itu
+function formatTimeWithTimezone(date, timeZone = 'Asia/Jakarta') {
+  return date.toLocaleTimeString('en-US', { hour12: false, timeZone });
 }
+function formatDuration(ms) {
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  // Optional: const seconds = totalSeconds % 60;
+  if (hours > 0) {
+    return `${hours} jam ${minutes} menit`;
+  }
+  return `${minutes} menit`;
+}
+
 async function runAbsen() {
-  console.log('[INFO] Mulai absen...');
+  console.log(
+    `[INFO] Mulai absen pada ${formatTimeWithTimezone(new Date())} WIB...`
+  );
 
   const browser = await chromium.launch({
     headless: true,
@@ -69,7 +63,9 @@ async function runAbsen() {
 }
 
 function randomTimeBetween7_15To7_29() {
-  const now = new Date();
+  const now = new Date(
+    now.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' })
+  );
 
   const targetHour = 7;
   const baseMinute = 15;
@@ -79,9 +75,9 @@ function randomTimeBetween7_15To7_29() {
   start.setHours(targetHour, baseMinute, 0, 0);
 
   // Jika waktu target sudah lewat sekarang, pakai hari besok
-  // if (start <= now) {
-  //   start.setDate(start.getDate() + 1);
-  // }
+  if (start <= now) {
+    start.setDate(start.getDate() + 1);
+  }
 
   const randomDelay = Math.floor(Math.random() * maxDelaySeconds * 1000); // ms
 
@@ -101,7 +97,10 @@ function randomTimeBetween7_15To7_29() {
 }
 
 function waitUntilTomorrowAt7AM() {
-  const now = new Date();
+  const now = new Date(
+    now.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' })
+  );
+
   const scheduledTime = new Date(now);
   scheduledTime.setDate(now.getDate() + 1);
   scheduledTime.setHours(7, 0, 0, 0);
@@ -120,7 +119,7 @@ function waitUntilTomorrowAt7AM() {
   );
   setTimeout(() => {
     randomTimeBetween7_15To7_29();
-  }, 10000);
+  }, delay);
 }
 function scheduleNextDay() {
   const now = new Date();
@@ -160,14 +159,4 @@ function formatTime(date) {
   const m = date.getMinutes().toString().padStart(2, '0');
   const s = date.getSeconds().toString().padStart(2, '0');
   return `${h}:${m}:${s}`;
-}
-function formatDuration(ms) {
-  const totalSeconds = Math.floor(ms / 1000);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  // Optional: const seconds = totalSeconds % 60;
-  if (hours > 0) {
-    return `${hours} jam ${minutes} menit`;
-  }
-  return `${minutes} menit`;
 }
