@@ -30,6 +30,7 @@ async function runAbsen() {
 
   const browser = await chromium.launch({
     headless: true,
+    executablePath: '/usr/bin/chromium-browser', // path default Chromium di Render
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
 
