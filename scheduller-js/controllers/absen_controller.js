@@ -111,7 +111,7 @@ function waitUntilTomorrowAt7AMController() {
 
   setTimeout(() => {
     startScheduledAbsen();
-  }, 100000);
+  }, 10000);
 }
 
 module.exports = {
