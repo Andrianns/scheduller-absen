@@ -9,6 +9,7 @@ const {
   randomTimeBetween7_15To7_29,
   waitUntilTomorrowAt7AM,
   getUserCredentials,
+  getNowJakarta,
 } = require('../models/absen_model');
 
 async function runAbsen() {
@@ -95,7 +96,7 @@ function startScheduledAbsen() {
 
 function waitUntilTomorrowAt7AMController() {
   const { delay, scheduledTime } = waitUntilTomorrowAt7AM();
-  const now = new Date();
+  const now = getNowJakarta();
 
   const jam = now.getHours().toString().padStart(2, '0');
   const menit = now.getMinutes().toString().padStart(2, '0');
@@ -110,7 +111,7 @@ function waitUntilTomorrowAt7AMController() {
 
   setTimeout(() => {
     startScheduledAbsen();
-  }, delay);
+  }, 100000);
 }
 
 module.exports = {
