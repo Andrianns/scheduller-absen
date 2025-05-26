@@ -1,7 +1,7 @@
 const { formatDuration, formatTime } = require('../helpers/time_helper');
 require('dotenv').config();
 
-const USERNAME = process.env.USERNAME;
+const USERNAME = 'Andrian.Kurnia@steradian.co.id';
 const PASSWORD = process.env.PASSWORD;
 const URL = process.env.URL;
 
@@ -21,9 +21,9 @@ function randomTimeBetween7_15To7_29() {
   const start = new Date(now);
   start.setHours(targetHour, baseMinute, 0, 0);
 
-  // if (start <= now) {
-  //   start.setDate(start.getDate() + 1);
-  // }
+  if (start <= now) {
+    start.setDate(start.getDate() + 1);
+  }
 
   const randomDelay = Math.floor(Math.random() * maxDelaySeconds * 1000);
   const scheduledTime = new Date(start.getTime() + randomDelay);

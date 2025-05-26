@@ -44,18 +44,18 @@ async function runAbsen(retryCount = 0, maxRetries = 3) {
     const clockInConfirm = 'button.oh-btn--success-outline';
     const clockOutBtn = 'button[data-target="#clockoutConfirmation"]';
 
-    await page.waitForTimeout(5000);
+    await page.waitForTimeout(10000);
 
     const isAlreadyClockedOut = await page.$(clockOutBtn);
     if (isAlreadyClockedOut) {
       console.log('✅ Sudah absen sebelumnya. Tidak perlu clock-in ulang.');
-      return;
+      scheduleNextDay();
     }
 
-    const isClockInAvailable = await page.$(clockInBtn);
-    if (!isClockInAvailable) {
-      throw new Error('Tombol Clock-In tidak ditemukan.');
-    }
+    // const isClockInAvailable = await page.$(clockInBtn);
+    // if (!isClockInAvailable) {
+    //   throw new Error('Tombol Clock-In tidak ditemukan.');
+    // }
 
     await page.click(clockInBtn);
     await page.waitForTimeout(6000);
@@ -72,6 +72,7 @@ async function runAbsen(retryCount = 0, maxRetries = 3) {
       console.log(
         '❌ Gagal absen setelah beberapa kali percobaan. Silakan cek secara manual.'
       );
+      scheduleNextDay();
     }
   } finally {
     await browser.close();
@@ -132,7 +133,7 @@ function waitUntilTomorrowAt7AMController() {
 
   setTimeout(() => {
     startScheduledAbsen();
-  }, 5000);
+  }, delay);
 }
 
 module.exports = {
