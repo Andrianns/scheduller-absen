@@ -2,7 +2,7 @@ const {
   waitUntilTomorrowAt7AMController,
 } = require('./controllers/absen_controller');
 
-console.log('[INFO] Scheduler aktif...');
+console.log('[INFO] Scheduler is active...');
 waitUntilTomorrowAt7AMController();
 
 // const { chromium } = require('playwright');

@@ -124,7 +124,7 @@ function waitUntilTomorrowAt7AMController() {
   const menit = now.getMinutes().toString().padStart(2, '0');
   const detik = now.getSeconds().toString().padStart(2, '0');
 
-  console.log(`[INFO] Service dimulai pada ${jam}:${menit}:${detik}`);
+  console.log(`[INFO] Service started at ${jam}:${menit}:${detik}`);
   console.log(
     `[INFO] Menunggu hingga jam ${scheduledTime.toLocaleTimeString()} — sekitar ${formatDuration(
       delay
