@@ -126,7 +126,7 @@ function waitUntilTomorrowAt7AMController() {
 
   console.log(`[INFO] Service started at ${jam}:${menit}:${detik}`);
   console.log(
-    `[INFO] Menunggu hingga jam ${scheduledTime.toLocaleTimeString()} — sekitar ${formatDuration(
+    `[INFO] Waiting until ${scheduledTime.toLocaleTimeString()} — approximately ${formatDuration(
       delay
     )}...`
   );
