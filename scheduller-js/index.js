@@ -1,4 +1,4 @@
-const { chromium } = require('playwright');
+const { chromium } = require('playwright-core');
 
 const USERNAME = 'Andrian.Kurnia@steradian.co.id';
 const PASSWORD = '087739993050';
