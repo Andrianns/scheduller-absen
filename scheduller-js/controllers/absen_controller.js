@@ -12,7 +12,7 @@ const {
   getNowJakarta,
 } = require('../models/absen_model');
 
-async function runAbsen() {
+async function runAbsen(retryCount = 0, maxRetries = 3) {
   const { USERNAME, PASSWORD, URL } = getUserCredentials();
 
   console.log(
@@ -42,8 +42,21 @@ async function runAbsen() {
 
     const clockInBtn = 'button[data-target="#clockinConfirmation"]';
     const clockInConfirm = 'button.oh-btn--success-outline';
+    const clockOutBtn = 'button[data-target="#clockoutConfirmation"]';
 
     await page.waitForTimeout(5000);
+
+    const isAlreadyClockedOut = await page.$(clockOutBtn);
+    if (isAlreadyClockedOut) {
+      console.log('✅ Sudah absen sebelumnya. Tidak perlu clock-in ulang.');
+      return;
+    }
+
+    const isClockInAvailable = await page.$(clockInBtn);
+    if (!isClockInAvailable) {
+      throw new Error('Tombol Clock-In tidak ditemukan.');
+    }
+
     await page.click(clockInBtn);
     await page.waitForTimeout(6000);
     await page.click(clockInConfirm);
@@ -52,6 +65,14 @@ async function runAbsen() {
     console.log('✅ Berhasil absen!');
   } catch (err) {
     console.error('❌ Gagal absen:', err.message);
+    if (retryCount < maxRetries) {
+      console.log(`🔁 Mencoba kembali dalam 5 detik...`);
+      setTimeout(() => runAbsen(retryCount + 1, maxRetries), 5000); // retry after 10s
+    } else {
+      console.log(
+        '❌ Gagal absen setelah beberapa kali percobaan. Silakan cek secara manual.'
+      );
+    }
   } finally {
     await browser.close();
   }
@@ -111,7 +132,7 @@ function waitUntilTomorrowAt7AMController() {
 
   setTimeout(() => {
     startScheduledAbsen();
-  }, delay);
+  }, 5000);
 }
 
 module.exports = {
