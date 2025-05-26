@@ -1,4 +1,4 @@
-const { chromium } = require('playwright-core');
+const { chromium } = require('playwright');
 
 const USERNAME = 'Andrian.Kurnia@steradian.co.id';
 const PASSWORD = '087739993050';
@@ -30,7 +30,6 @@ async function runAbsen() {
 
   const browser = await chromium.launch({
     headless: true,
-    executablePath: '/usr/bin/chromium-browser', // path default Chromium di Render
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
 

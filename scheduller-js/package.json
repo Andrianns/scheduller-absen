@@ -4,7 +4,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "build": "echo 'Tidak perlu build karena ini JavaScript biasa'"
+    "build": "echo 'Tidak perlu build karena ini JavaScript biasa'",
+    "postinstall": "npx playwright install chromium"
   },
   "keywords": [],
   "author": "",
@@ -12,6 +13,6 @@
   "description": "",
   "dependencies": {
     "node-cron": "^4.0.7",
-    "playwright-core": "^1.52.0"
+    "playwright": "^1.52.0"
   }
 }
