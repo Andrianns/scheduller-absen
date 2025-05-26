@@ -21,9 +21,9 @@ function randomTimeBetween7_15To7_29() {
   const start = new Date(now);
   start.setHours(targetHour, baseMinute, 0, 0);
 
-  if (start <= now) {
-    start.setDate(start.getDate() + 1);
-  }
+  // if (start <= now) {
+  //   start.setDate(start.getDate() + 1);
+  // }
 
   const randomDelay = Math.floor(Math.random() * maxDelaySeconds * 1000);
   const scheduledTime = new Date(start.getTime() + randomDelay);
