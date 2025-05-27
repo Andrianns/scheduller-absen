@@ -1,16 +1,18 @@
-const { chromium } = require('playwright');
+const { chromium } = require("playwright");
+const Holidays = require("date-holidays");
+const hd = new Holidays("ID"); // ID = Indonesia
 const {
   formatTimeWithTimezone,
   formatDuration,
   formatTime,
-} = require('../helpers/time_helper');
+} = require("../helpers/time_helper");
 
 const {
   randomTimeBetween7_15To7_29,
   waitUntilTomorrowAt7AM,
   getUserCredentials,
   getNowJakarta,
-} = require('../models/absen_model');
+} = require("../models/absen_model");
 
 async function runAbsen(retryCount = 0, maxRetries = 3) {
   const { USERNAME, PASSWORD, URL } = getUserCredentials();
@@ -21,7 +23,7 @@ async function runAbsen(retryCount = 0, maxRetries = 3) {
 
   const browser = await chromium.launch({
     headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
   });
 
   try {
@@ -30,25 +32,25 @@ async function runAbsen(retryCount = 0, maxRetries = 3) {
         latitude: -6.216845646559504,
         longitude: 106.81443407439703,
       },
-      permissions: ['geolocation'],
+      permissions: ["geolocation"],
     });
 
     const page = await context.newPage();
-    await page.goto(URL, { waitUntil: 'networkidle' });
+    await page.goto(URL, { waitUntil: "networkidle" });
 
-    await page.fill('#username', USERNAME);
-    await page.fill('#password', PASSWORD);
+    await page.fill("#username", USERNAME);
+    await page.fill("#password", PASSWORD);
     await page.click('button[type="submit"]');
 
     const clockInBtn = 'button[data-target="#clockinConfirmation"]';
-    const clockInConfirm = 'button.oh-btn--success-outline';
+    const clockInConfirm = "button.oh-btn--success-outline";
     const clockOutBtn = 'button[data-target="#clockoutConfirmation"]';
 
     await page.waitForTimeout(10000);
 
     const isAlreadyClockedOut = await page.$(clockOutBtn);
     if (isAlreadyClockedOut) {
-      console.log('✅ Sudah absen sebelumnya. Tidak perlu clock-in ulang.');
+      console.log("✅ Sudah absen sebelumnya. Tidak perlu clock-in ulang.");
       scheduleNextDay();
     }
 
@@ -62,15 +64,15 @@ async function runAbsen(retryCount = 0, maxRetries = 3) {
     await page.click(clockInConfirm);
     await page.waitForTimeout(6000);
 
-    console.log('✅ Berhasil absen!');
+    console.log("✅ Berhasil absen!");
   } catch (err) {
-    console.error('❌ Gagal absen:', err.message);
+    console.error("❌ Gagal absen:", err.message);
     if (retryCount < maxRetries) {
       console.log(`🔁 Mencoba kembali dalam 5 detik...`);
       setTimeout(() => runAbsen(retryCount + 1, maxRetries), 5000); // retry after 10s
     } else {
       console.log(
-        '❌ Gagal absen setelah beberapa kali percobaan. Silakan cek secara manual.'
+        "❌ Gagal absen setelah beberapa kali percobaan. Silakan cek secara manual."
       );
       scheduleNextDay();
     }
@@ -81,19 +83,29 @@ async function runAbsen(retryCount = 0, maxRetries = 3) {
 
 function scheduleNextDay() {
   const nowJakarta = new Date(
-    new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' })
+    new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" })
   );
 
   const nextDayJakarta = new Date(nowJakarta);
   nextDayJakarta.setDate(nowJakarta.getDate() + 1);
   nextDayJakarta.setHours(7, 0, 0, 0);
+  while (true) {
+    const day = nextDayJakarta.getDay(); // 0 = Minggu, 6 = Sabtu
+    const dateStr = nextDayJakarta.toISOString().split("T")[0];
 
+    const isWeekend = day === 0 || day === 6;
+    const isHoliday = !!hd.isHoliday(new Date(dateStr));
+
+    if (!isWeekend && !isHoliday) break;
+
+    nextDayJakarta.setDate(nextDayJakarta.getDate() + 1);
+  }
   const delayMs = nextDayJakarta.getTime() - nowJakarta.getTime();
 
   console.log(
-    `[INFO] Jadwal berikutnya diatur untuk besok pukul 07:00 WIB (tunggu ${formatDuration(
-      delayMs
-    )})`
+    `[INFO] Next schedule is set for ${nextDayJakarta.toLocaleString("en-US", {
+      timeZone: "Asia/Jakarta",
+    })} WIB (in ${formatDuration(delayMs)})`
   );
 
   setTimeout(() => {
@@ -120,9 +132,9 @@ function waitUntilTomorrowAt7AMController() {
   const { delay, scheduledTime } = waitUntilTomorrowAt7AM();
   const now = getNowJakarta();
 
-  const jam = now.getHours().toString().padStart(2, '0');
-  const menit = now.getMinutes().toString().padStart(2, '0');
-  const detik = now.getSeconds().toString().padStart(2, '0');
+  const jam = now.getHours().toString().padStart(2, "0");
+  const menit = now.getMinutes().toString().padStart(2, "0");
+  const detik = now.getSeconds().toString().padStart(2, "0");
 
   console.log(`[INFO] Service started at ${jam}:${menit}:${detik}`);
   console.log(
