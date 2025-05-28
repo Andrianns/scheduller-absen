@@ -1,12 +1,22 @@
 const { chromium } = require("playwright");
-const Holidays = require("date-holidays");
-const hd = new Holidays("ID"); // ID = Indonesia
+const axios = require("axios");
+
 const {
   formatTimeWithTimezone,
   formatDuration,
   formatTime,
+  formatDateIndo,
 } = require("../helpers/time_helper");
 
+async function getHolidayMap() {
+  try {
+    const { data } = await axios.get("https://dayoffapi.vercel.app/api");
+    return data.map((item) => item.tanggal);
+  } catch (err) {
+    console.error("❌ Gagal mengambil data hari libur:", err.message);
+    return [];
+  }
+}
 const {
   randomTimeBetween7_15To7_29,
   waitUntilTomorrowAt7AM,
@@ -16,7 +26,6 @@ const {
 
 async function runAbsen(retryCount = 0, maxRetries = 3) {
   const { USERNAME, PASSWORD, URL } = getUserCredentials();
-
   console.log(
     `[INFO] Mulai absen pada ${formatTimeWithTimezone(new Date())} WIB...`
   );
@@ -80,32 +89,45 @@ async function runAbsen(retryCount = 0, maxRetries = 3) {
     await browser.close();
   }
 }
+async function findNextWorkingDayAt7AM(date, holidayList) {
+  const nextDay = new Date(date);
+  nextDay.setHours(7, 0, 0, 0);
 
-function scheduleNextDay() {
+  while (true) {
+    const day = nextDay.getDay(); // 0 = Minggu, 6 = Sabtu
+    const dateStr = nextDay.toISOString().split("T")[0];
+
+    const isWeekend = day === 0 || day === 6;
+    const isHoliday = holidayList.includes(dateStr);
+
+    if (!isWeekend && !isHoliday) break;
+
+    nextDay.setDate(nextDay.getDate() + 1);
+    nextDay.setHours(7, 0, 0, 0); // reset jam 7 pagi setiap iterasi
+  }
+
+  return nextDay;
+}
+
+async function scheduleNextDay() {
   const nowJakarta = new Date(
     new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" })
   );
 
-  const nextDayJakarta = new Date(nowJakarta);
-  nextDayJakarta.setDate(nowJakarta.getDate() + 1);
-  nextDayJakarta.setHours(7, 0, 0, 0);
-  while (true) {
-    const day = nextDayJakarta.getDay(); // 0 = Minggu, 6 = Sabtu
-    const dateStr = nextDayJakarta.toISOString().split("T")[0];
+  const holidayList = await getHolidayMap();
 
-    const isWeekend = day === 0 || day === 6;
-    const isHoliday = !!hd.isHoliday(new Date(dateStr));
+  const nextDayJakarta = await findNextWorkingDayAt7AM(
+    new Date(nowJakarta.getTime() + 24 * 60 * 60 * 1000),
+    holidayList
+  );
 
-    if (!isWeekend && !isHoliday) break;
-
-    nextDayJakarta.setDate(nextDayJakarta.getDate() + 1);
-  }
   const delayMs = nextDayJakarta.getTime() - nowJakarta.getTime();
-
   console.log(
-    `[INFO] Next schedule is set for ${nextDayJakarta.toLocaleString("en-US", {
-      timeZone: "Asia/Jakarta",
-    })} WIB (in ${formatDuration(delayMs)})`
+    `[INFO ${formatDateIndo(
+      nowJakarta
+    )}] Next schedule is set for ${formatDateIndo(
+      nextDayJakarta
+    )} WIB (in ${formatDuration(delayMs)})`
   );
 
   setTimeout(() => {
@@ -128,19 +150,29 @@ function startScheduledAbsen() {
   }, delayMs);
 }
 
-function waitUntilTomorrowAt7AMController() {
-  const { delay, scheduledTime } = waitUntilTomorrowAt7AM();
+async function waitUntilTomorrowAt7AMController() {
+  const { scheduledTime } = waitUntilTomorrowAt7AM();
   const now = getNowJakarta();
+  const holidayList = await getHolidayMap();
 
+  const nextWorkingDay = await findNextWorkingDayAt7AM(
+    scheduledTime,
+    holidayList
+  );
+  scheduledTime.setTime(nextWorkingDay.getTime());
+
+  const delay = scheduledTime.getTime() - now.getTime();
+
+  console.log(holidayList);
   const jam = now.getHours().toString().padStart(2, "0");
   const menit = now.getMinutes().toString().padStart(2, "0");
   const detik = now.getSeconds().toString().padStart(2, "0");
 
   console.log(`[INFO] Service started at ${jam}:${menit}:${detik}`);
   console.log(
-    `[INFO] Waiting until ${scheduledTime.toLocaleTimeString()} — approximately ${formatDuration(
-      delay
-    )}...`
+    `[INFO ${formatDateIndo(now)}] Next working day schedule: ${formatDateIndo(
+      scheduledTime
+    )} 07:00 WIB approximately ${formatDuration(delay)}...`
   );
 
   setTimeout(() => {

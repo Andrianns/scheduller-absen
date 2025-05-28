@@ -15,7 +15,6 @@ import (
 func main() {
 	c := cron.New()
 
-	// Jalankan setiap hari pukul 07:00 WIB
 	_, err := c.AddFunc("*/1 * * * *", func() {
 		testNow()
 	})
@@ -26,7 +25,7 @@ func main() {
 	c.Start()
 	log.Println("Scheduler siap...")
 
-	select {} // biar program tetap jalan
+	select {}
 }
 func testNow() {
 	log.Println("Test langsung tanpa delay")
@@ -66,7 +65,6 @@ func absen() error {
 	now := time.Now()
 	log.Printf("[INFO] Mulai absen pada: %s", now.Format("2006-01-02 15:04:05"))
 
-	// Lokasi kantor (ubah sesuai kebutuhan)
 	latitude := -6.216845646559504
 	longitude := 106.81443407439703
 	accuracy := 100.0
@@ -79,10 +77,9 @@ func absen() error {
 		chromedp.Flag("disable-infobars", true),
 		chromedp.Flag("disable-password-manager", true),
 		chromedp.Flag("no-sandbox", true),
-		chromedp.Flag("use-fake-ui-for-media-stream", true), // ⬅️ Tambahkan ini
+		chromedp.Flag("use-fake-ui-for-media-stream", true),
 		chromedp.Flag("enable-features", "GeolocationOverride"),
 		chromedp.Flag("use-fake-device-for-media-stream", true),
-		// chromedp.UserDataDir("./chromedata"), // penting agar permission tersimpan
 	)
 
 	allocCtx, cancel := chromedp.NewExecAllocator(context.Background(), opts...)
