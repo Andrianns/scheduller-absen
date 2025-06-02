@@ -15,9 +15,9 @@ function randomTimeBetween7_10To7_20() {
   const now = getNowJakarta();
 
   const targetHour = 7;
-  const baseMinute = 10; 
+  const baseMinute = 15; 
 
-  const maxDelaySeconds = 10 * 60 + 59; 
+  const maxDelaySeconds = (12 * 60) + 59; 
 
   const start = new Date(now);
   start.setHours(targetHour, baseMinute, 0, 0);
