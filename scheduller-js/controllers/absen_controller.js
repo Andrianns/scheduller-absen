@@ -18,7 +18,7 @@ async function getHolidayMap() {
   }
 }
 const {
-  randomTimeBetween7_15To7_29,
+  randomTimeBetween7_10To7_20,
   waitUntilTomorrowAt7AM,
   getUserCredentials,
   getNowJakarta,
@@ -26,9 +26,7 @@ const {
 
 async function runAbsen(retryCount = 0, maxRetries = 3) {
   const { USERNAME, PASSWORD, URL } = getUserCredentials();
-  console.log(
-    `[INFO] Mulai absen pada ${formatTimeWithTimezone(new Date())} WIB...`
-  );
+  console.log(`[INFO] Mulai absen pada ${formatTimeWithTimezone(new Date())} WIB...`);
 
   const browser = await chromium.launch({
     headless: true,
@@ -47,42 +45,46 @@ async function runAbsen(retryCount = 0, maxRetries = 3) {
     const page = await context.newPage();
     await page.goto(URL, { waitUntil: "networkidle" });
 
+    // Isi kredensial login
     await page.fill("#username", USERNAME);
     await page.fill("#password", PASSWORD);
-    await page.click('button[type="submit"]');
 
+    // Klik tombol login
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: "networkidle" }),
+      page.click('button[type="submit"]'),
+    ]);
+
+    // Tunggu tombol clock-in muncul (indikator login sukses)
     const clockInBtn = 'button[data-target="#clockinConfirmation"]';
-    const clockInConfirm = "button.oh-btn--success-outline";
     const clockOutBtn = 'button[data-target="#clockoutConfirmation"]';
+    const clockInConfirm = "button.oh-btn--success-outline";
 
-    await page.waitForTimeout(10000);
+    await page.waitForSelector(`${clockInBtn}, ${clockOutBtn}`, { timeout: 10000 });
 
+    // Cek apakah sudah clock-out (berarti sudah absen sebelumnya)
     const isAlreadyClockedOut = await page.$(clockOutBtn);
     if (isAlreadyClockedOut) {
       console.log("✅ Sudah absen sebelumnya. Tidak perlu clock-in ulang.");
       scheduleNextDay();
+      return;
     }
 
-    // const isClockInAvailable = await page.$(clockInBtn);
-    // if (!isClockInAvailable) {
-    //   throw new Error('Tombol Clock-In tidak ditemukan.');
-    // }
-
+    // Klik tombol Clock-In
     await page.click(clockInBtn);
-    await page.waitForTimeout(6000);
+
+    // Tunggu dialog konfirmasi muncul dan klik tombol konfirmasi
+    await page.waitForSelector(clockInConfirm, { timeout: 5000 });
     await page.click(clockInConfirm);
-    await page.waitForTimeout(6000);
 
     console.log("✅ Berhasil absen!");
   } catch (err) {
     console.error("❌ Gagal absen:", err.message);
     if (retryCount < maxRetries) {
-      console.log(`🔁 Mencoba kembali dalam 5 detik...`);
-      setTimeout(() => runAbsen(retryCount + 1, maxRetries), 5000); // retry after 10s
+      console.log("🔁 Mencoba kembali dalam 5 detik...");
+      setTimeout(() => runAbsen(retryCount + 1, maxRetries), 5000);
     } else {
-      console.log(
-        "❌ Gagal absen setelah beberapa kali percobaan. Silakan cek secara manual."
-      );
+      console.log("❌ Gagal absen setelah beberapa kali percobaan. Silakan cek secara manual.");
       scheduleNextDay();
     }
   } finally {
@@ -136,7 +138,7 @@ async function scheduleNextDay() {
 }
 
 function startScheduledAbsen() {
-  const { delayMs, scheduledTime } = randomTimeBetween7_15To7_29();
+  const { delayMs, scheduledTime } = randomTimeBetween7_10To7_20();
 
   console.log(
     `[INFO] Akan absen pukul: ${formatTime(

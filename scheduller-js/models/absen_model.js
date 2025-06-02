@@ -11,26 +11,34 @@ function getNowJakarta() {
   );
 }
 
-function randomTimeBetween7_15To7_29() {
+function randomTimeBetween7_10To7_20() {
   const now = getNowJakarta();
 
   const targetHour = 7;
-  const baseMinute = 15;
-  const maxDelaySeconds = 14 * 60 + 59; // 07:15:00 - 07:29:59
+  const baseMinute = 10; 
+
+  const maxDelaySeconds = 10 * 60 + 59; 
 
   const start = new Date(now);
   start.setHours(targetHour, baseMinute, 0, 0);
 
+  
   if (start <= now) {
     start.setDate(start.getDate() + 1);
   }
 
-  const randomDelay = Math.floor(Math.random() * maxDelaySeconds * 1000);
-  const scheduledTime = new Date(start.getTime() + randomDelay);
+  
+  const randomDelayMs = Math.floor(Math.random() * (maxDelaySeconds + 1) * 1000); // Corrected to include the full range up to :59.999
+
+  const scheduledTime = new Date(start.getTime() + randomDelayMs);
   const delayMs = scheduledTime.getTime() - now.getTime();
 
   return { delayMs, scheduledTime };
 }
+
+
+
+
 
 function waitUntilTomorrowAt7AM() {
   const now = getNowJakarta();
@@ -48,7 +56,7 @@ function getUserCredentials() {
 
 module.exports = {
   getNowJakarta,
-  randomTimeBetween7_15To7_29,
+  randomTimeBetween7_10To7_20,
   waitUntilTomorrowAt7AM,
   getUserCredentials,
 };
