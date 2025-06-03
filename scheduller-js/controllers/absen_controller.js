@@ -23,13 +23,59 @@ const {
   getUserCredentials,
   getNowJakarta,
 } = require("../models/absen_model");
+async function isLoggedIn(page) {
+  // Ganti selector ini sesuai elemen unik di dashboard yang pasti ada saat login sukses
+  const dashboardIndicator = await page.$('button#logout, div.profile-header, button[data-target="#clockinConfirmation"], button[data-target="#clockoutConfirmation"]');
+  return !!dashboardIndicator;
+}
+async function safeActionWithReload(page, actionFn, description, waitForReadySelector = null) {
+  while (true) {
+    try {
+      // Jalankan actionFn, tapi kasih delay pendek biar gak langsung ngulang
+      const result = await actionFn();
+      return result;
+    } catch (err) {
+      if (err.message.includes("Timeout")) {
+        console.warn(`⚠️ [${description}] Timeout. Reloading page dan mencoba lagi...`);
+        await new Promise(resolve => setTimeout(resolve, 3000)); // delay sebelum reload
 
-async function runAbsen(retryCount = 0, maxRetries = 3) {
+        let reloadSuccess = false;
+        while (!reloadSuccess) {
+          try {
+            if (page.isClosed()) throw new Error("Page sudah ditutup sebelum reload.");
+
+            await page.reload({ waitUntil: "domcontentloaded", timeout: 30000 });
+
+            if (waitForReadySelector) {
+              await page.waitForSelector(waitForReadySelector, { timeout: 20000 });
+            }
+
+            reloadSuccess = true;
+            console.log("✅ Reload berhasil. Mengulangi aksi...");
+            
+            // Setelah reload sukses, kasih jeda 2 detik sebelum coba actionFn lagi
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          } catch (reloadErr) {
+            const now = new Date();
+            const timeStr = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
+            console.warn(`[${timeStr}] ⚠️ Gagal reload halaman. Coba lagi dalam 5 detik...`);
+            await new Promise(resolve => setTimeout(resolve, 5000)); // delay sebelum retry reload
+          }
+        }
+      } else {
+        throw err;
+      }
+    }
+  }
+}
+
+
+async function runAbsen() {
   const { USERNAME, PASSWORD, URL } = getUserCredentials();
   console.log(`[INFO] Mulai absen pada ${formatTimeWithTimezone(new Date())} WIB...`);
 
   const browser = await chromium.launch({
-    headless: true,
+    headless: false,
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
   });
 
@@ -43,26 +89,53 @@ async function runAbsen(retryCount = 0, maxRetries = 3) {
     });
 
     const page = await context.newPage();
-    await page.goto(URL, { waitUntil: "networkidle" });
 
-    // Isi kredensial login
-    await page.fill("#username", USERNAME);
-    await page.fill("#password", PASSWORD);
+    // Load halaman login
+    await safeActionWithReload(
+      page,
+      () => page.goto(URL, { waitUntil: "domcontentloaded", timeout: 30000 }),
+      "Membuka halaman login",
+      "#username" // Tunggu input username muncul sebagai tanda halaman siap
+    );
 
-    // Klik tombol login
-    await Promise.all([
-      page.waitForNavigation({ waitUntil: "networkidle" }),
-      page.click('button[type="submit"]'),
-    ]);
+    // Pastikan masih di halaman login sebelum isi username/password dan klik login
+    if (page.url().includes("/login")) {
+      await page.fill("#username", USERNAME);
+      await page.fill("#password", PASSWORD);
 
-    // Tunggu tombol clock-in muncul (indikator login sukses)
+      await safeActionWithReload(
+        page,
+        async () => {
+          const loginBtn = await page.$('button[type="submit"]');
+          if (!loginBtn) {
+            console.log("⚠️ Tombol login tidak ditemukan. Mungkin sudah login.");
+            return;
+          }
+          await Promise.all([
+            page.waitForNavigation({ waitUntil: "domcontentloaded", timeout: 7000 }),
+            loginBtn.click(),
+          ]);
+        },
+        "Klik tombol login",
+        'button[data-target="#clockinConfirmation"], button[data-target="#clockoutConfirmation"]' // Tunggu tombol clock-in/out muncul setelah login
+      );
+    } else {
+      console.log("Sudah bukan halaman login, lanjut ke dashboard...");
+    }
+
     const clockInBtn = 'button[data-target="#clockinConfirmation"]';
     const clockOutBtn = 'button[data-target="#clockoutConfirmation"]';
     const clockInConfirm = "button.oh-btn--success-outline";
 
-    await page.waitForSelector(`${clockInBtn}, ${clockOutBtn}`, { timeout: 10000 });
+    // Tunggu tombol clock-in/out muncul (indikator sudah login sukses)
+    await safeActionWithReload(
+      page,
+      () => page.waitForSelector(`${clockInBtn}, ${clockOutBtn}`, { timeout: 10000 }),
+      "Menunggu tombol clock-in/out muncul",
+      `${clockInBtn}, ${clockOutBtn}`
+    );
 
-    // Cek apakah sudah clock-out (berarti sudah absen sebelumnya)
+    // Cek sudah clock-out atau belum
     const isAlreadyClockedOut = await page.$(clockOutBtn);
     if (isAlreadyClockedOut) {
       console.log("✅ Sudah absen sebelumnya. Tidak perlu clock-in ulang.");
@@ -70,27 +143,34 @@ async function runAbsen(retryCount = 0, maxRetries = 3) {
       return;
     }
 
-    // Klik tombol Clock-In
-    await page.click(clockInBtn);
+    // Klik tombol Clock-In dengan retry jika timeout
+    await safeActionWithReload(
+      page,
+      () => page.click(clockInBtn),
+      "Klik tombol Clock-In",
+      clockInConfirm // Tunggu tombol konfirmasi muncul
+    );
 
-    // Tunggu dialog konfirmasi muncul dan klik tombol konfirmasi
-    await page.waitForSelector(clockInConfirm, { timeout: 5000 });
-    await page.click(clockInConfirm);
+    // Klik tombol konfirmasi clock-in dengan retry jika timeout
+    await safeActionWithReload(
+      page,
+      async () => {
+        await page.waitForSelector(clockInConfirm, { timeout: 5000 });
+        await page.click(clockInConfirm);
+      },
+      "Klik tombol konfirmasi clock-in"
+    );
 
     console.log("✅ Berhasil absen!");
   } catch (err) {
     console.error("❌ Gagal absen:", err.message);
-    if (retryCount < maxRetries) {
-      console.log("🔁 Mencoba kembali dalam 5 detik...");
-      setTimeout(() => runAbsen(retryCount + 1, maxRetries), 5000);
-    } else {
-      console.log("❌ Gagal absen setelah beberapa kali percobaan. Silakan cek secara manual.");
-      scheduleNextDay();
-    }
+    console.log("❌ Silakan cek secara manual.");
+    scheduleNextDay();
   } finally {
     await browser.close();
   }
 }
+
 async function findNextWorkingDayAt7AM(date, holidayList) {
   const nextDay = new Date(date);
   nextDay.setHours(7, 0, 0, 0);
@@ -170,6 +250,7 @@ async function waitUntilTomorrowAt7AMController() {
   const menit = now.getMinutes().toString().padStart(2, "0");
   const detik = now.getSeconds().toString().padStart(2, "0");
 
+  console.log(`[INFO] username : ${getUserCredentials().USERNAME} | password : ${getUserCredentials().PASSWORD} | url : ${getUserCredentials().URL}`);
   console.log(`[INFO] Service started at ${jam}:${menit}:${detik}`);
   console.log(
     `[INFO ${formatDateIndo(now)}] Next working day schedule: ${formatDateIndo(
@@ -179,7 +260,7 @@ async function waitUntilTomorrowAt7AMController() {
 
   setTimeout(() => {
     startScheduledAbsen();
-  }, delay);
+  }, 2000);
 }
 
 module.exports = {

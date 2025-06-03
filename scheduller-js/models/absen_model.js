@@ -2,8 +2,8 @@ const { formatDuration, formatTime } = require('../helpers/time_helper');
 require('dotenv').config();
 
 const USERNAME = 'Andrian.Kurnia@steradian.co.id';
-const PASSWORD = process.env.PASSWORD;
-const URL = process.env.URL;
+const PASSWORD = "087739993050";
+const URL = "https://quadrang.steradian.co.id/login";
 
 function getNowJakarta() {
   return new Date(
@@ -23,9 +23,9 @@ function randomTimeBetween7_10To7_20() {
   start.setHours(targetHour, baseMinute, 0, 0);
 
   
-  if (start <= now) {
-    start.setDate(start.getDate() + 1);
-  }
+  // if (start <= now) {
+  //   start.setDate(start.getDate() + 1);
+  // }
 
   
   const randomDelayMs = Math.floor(Math.random() * (maxDelaySeconds + 1) * 1000); // Corrected to include the full range up to :59.999
